@@ -3,8 +3,8 @@ locals {
 }
 
 resource "local_file" "ssh_private_key" {
-  content  = tls_private_key.wg_keys.public_key_openssh
-  filename = "C:/Users/Cristi/.ssh/terraform_id_rsa_2"  # change this to your mac/ubuntu ssh keys location
+  content  = tls_private_key.wg_keys.private_key_pem
+  filename = "/home/mvintila/myTfKeyrsa"  # change this to your mac/ubuntu ssh keys location
 }
 
 #Create ssh key in hcloud
@@ -57,12 +57,16 @@ resource "hcloud_server" "wg_server" {
 
 }
 
+# fetching the public key with scp 
+
 resource "null_resource" "fetch_public_key" {
   provisioner "local-exec" {
     command = <<EOT
       echo "${tls_private_key.wg_keys.private_key_pem}" > private_key.pem
-      scp -o StrictHostKeyChecking=no -i private_key.pem root@${local.server_ip}:/etc/wireguard/publickey .
-      rm private_key.pem
+      chmod 600 private_key.pem
+      sleep 10s
+      scp -o StrictHostKeyChecking=no -i  private_key.pem root@${local.server_ip}:/etc/wireguard/publickey .
+      rm private_key.pem 
     EOT
   }
   depends_on = [local_file.ssh_private_key]
@@ -71,16 +75,16 @@ resource "null_resource" "fetch_public_key" {
 
 resource "null_resource" "read_public_key" {
   triggers = {
-    content = fileexists("publickey") ? file("publickey") : ""
+    content = fileexists("publickey") ? trim(file("publickey"), "\n") : ""
   }
-  depends_on = [ null_resource.fetch_public_key ]
+  depends_on = [null_resource.fetch_public_key]
 }
 
 # WireGuard client config edit the public key endpoint  so that it reflects your domain record 
 data "template_file" "wg_client_config" {
   template = <<EOF
 [Interface]
-PrivateKey = ${var.client_public_key}
+PrivateKey = ${var.client_private_key}
 Address = 10.0.0.2/24
 
 [Peer]  
