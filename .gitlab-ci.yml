@@ -1,0 +1,41 @@
+variables:
+  HCLOUD_TOKEN:
+    value: ""
+    description: "Enter your hcloud token"
+    input: true
+    masked: true
+
+stages:          # List of stages for jobs, and their order of execution
+  - install
+  - init
+  - apply
+
+install-job:     # This job runs in the install stage, which runs first.
+  stage: install
+  script:
+    - echo "Installing terraform locally..."
+    - curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+    - sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+    - sudo apt-get update && sudo apt-get install terraform
+    - echo "Terraform installed."
+
+init-job:        # This job runs in the init stage.
+  stage: init    # It only starts when the job in the install stage completes successfully.
+  script:
+    - echo "Initializing terraform..."
+    - terraform init
+    - echo "Terraform initialized."
+
+apply-job:       # This job runs in the apply stage.
+  stage: apply   # It only starts when the job in the init stage completes successfully.
+  script:
+    - echo "Applying terraform..."
+    - terraform apply -auto-approve
+    - echo "Terraform applied."
+
+retry-job:       # This job also runs in the apply stage.
+  stage: apply   # It can run at the same time as apply-job (in parallel).
+  script:
+    - echo "Retrying terraform apply in case of failure..."
+    - terraform apply -auto-approve || true
+    - echo "Terraform retried."
