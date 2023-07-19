@@ -4,7 +4,16 @@ variables:
     description: "Enter your hcloud token"
     input: true
     masked: true
-
+ CLIENT_PRIVATE_KEY:
+    value: ""
+    description: "Enter your client private key"
+    input: true
+    masked: true
+ CLIENT_PUBLIC_KEY:
+    value: ""
+    description: "Enter your client private key"
+    input: true
+    masked: true
 stages:          # List of stages for jobs, and their order of execution
   - install
   - init
